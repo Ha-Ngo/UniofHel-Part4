@@ -92,7 +92,7 @@ test('blog without title and url', async () => {
 
   const response = await api.get('/api/blogs')
 
-  expect(response.body).toHaveLength(initialBlogs.lenght)
+  expect(response.body).toHaveLength(initialBlogs.length)
 })
 
 afterAll(() => {
