@@ -1,5 +1,6 @@
 const blog = require('../models/blog')
 var _ = require('lodash')
+const { indexOf } = require('lodash')
 
 const dummy = (blogs) => {
   return 1
@@ -27,22 +28,33 @@ const favoriteBlog = (blogs) => {
   return {}
 }
 
-function testfunc(author, blogs) {
-  return {'author': author, 'blogs': blogs}
-}
+
 const mostBlogs = (blogs) => {
   const result = _.countBy(blogs, 'author')
   const countBlog = Object.entries(result).map(([key,value]) => ({'author': key,'blogs': value}))
   const mostBlog = _.maxBy(countBlog, 'blogs')
-  console.log(countBlog)
-  console.log(mostBlog)
-
+  
   return mostBlog
 }
+
+const mostLikes = (blogs) => {
+  const result = _.groupBy(blogs, 'author')
+  console.log(result)
+  const countBlog = Object.values(result).map(blog => blog.map((like) => like.likes))
+  const authors = Object.keys(result)
+  const totalLike = countBlog.map(like => like.reduce((total, like) => total + like))
+  const index = totalLike.indexOf(Math.max(...totalLike))
+  const final = {'author': authors[index], 'likes': totalLike[index]}
+  console.log(final)
+
+  return final
+}
+
 
 module.exports = {
   dummy,
   totalLikes,
   favoriteBlog,
-  mostBlogs
+  mostBlogs,
+  mostLikes
 }
