@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const uniqueValidator = require('mongoose-unique-validator')
+const jwt = require('jsonwebtoken')
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -32,6 +33,16 @@ userSchema.set('toJSON', {
     delete returnedObject.passwordHash
   }
 })
+
+userSchema.methods.getToken = function() {
+  const userForToken = {
+    username: this.username,
+    id: this._id
+  }
+
+  const token = jwt.sign(userForToken, process.env.SECRET)
+  return token
+}
 
 const User = mongoose.model('User', userSchema)
 

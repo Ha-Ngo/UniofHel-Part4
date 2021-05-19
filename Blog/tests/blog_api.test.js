@@ -6,6 +6,7 @@ const api = supertest(app)
 const Blog = require('../models/blog')
 const bcrypt = require('bcrypt')
 const User = require('../models/user')
+const jwt = require('jsonwebtoken')
 
 beforeEach(async () => {
   await Blog.deleteMany({})
@@ -57,7 +58,7 @@ describe('viewing a specific blog', () => {
   test('fail with statuscode 404 if blog does not exist', async () => {
     const validNonexistingId = await helper.nonExistingId()
 
-    console.log(validNonexistingId)
+    // console.log(validNonexistingId)
 
     await api
       .get(`/api/blogs/${validNonexistingId}`)
@@ -74,7 +75,44 @@ describe('viewing a specific blog', () => {
 })
 
 describe('addition of a new blog', () => {
+  // beforeEach(async () => {
+  //   await User.deleteMany({})
+
+  //   const passwordHash = await bcrypt.hash('sekret', 10)
+  //   const user = new User({username: 'root', passwordHash})
+
+  //   await user.save()
+  //   // const token = user.getToken()
+  // })
   test('succeeds create a new blog post', async () => {
+    await User.deleteMany({})
+
+    const passwordHash = await bcrypt.hash('sekret', 10)
+    const user = new User({username: 'root', passwordHash})
+
+    await user.save()
+    const token = user.getToken()
+
+    const newBlog = {
+      title: 'Canonical string reduction',
+      author: 'Edsger W. Dijkstra',
+      url: 'http://www.cs.utexas.edu/~EWD/transcriptions/EWD08xx/EWD808.html',
+      likes: 12,
+    }
+    await api
+      .post('/api/blogs')
+      .set('Authorization', 'bearer ' + token)
+      .send(newBlog)
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+  
+    const response = await api.get('/api/blogs')
+    const title = response.body.map(blog => blog.title)
+    expect(response.body).toHaveLength(helper.initialBlogs.length + 1)
+    expect(title).toContain('Canonical string reduction')
+  })
+
+  test('fail to add blog without token provided', async () => {
     const newBlog = {
       title: 'Canonical string reduction',
       author: 'Edsger W. Dijkstra',
@@ -84,16 +122,22 @@ describe('addition of a new blog', () => {
     await api
       .post('/api/blogs')
       .send(newBlog)
-      .expect(201)
+      .expect(401)
       .expect('Content-Type', /application\/json/)
-  
+
     const response = await api.get('/api/blogs')
-    const title = response.body.map(blog => blog.title)
-    expect(response.body).toHaveLength(helper.initialBlogs.length + 1)
-    expect(title).toContain('Canonical string reduction')
+    expect(response.body).toHaveLength(helper.initialBlogs.length)
   })
 
   test('blog without like property', async () => {
+    await User.deleteMany({})
+
+    const passwordHash = await bcrypt.hash('sekret', 10)
+    const user = new User({username: 'root', passwordHash})
+
+    await user.save()
+    const token = user.getToken()
+
     const newBlog = {
       title: 'Type wars',
       author: 'Robert C. Martin',
@@ -102,22 +146,32 @@ describe('addition of a new blog', () => {
   
     await api
       .post('/api/blogs')
+      .set('Authorization', 'bearer ' + token)
       .send(newBlog)
-      .expect(201)
+      .expect(200)
   
     const response = await api.get('/api/blogs')
     const likes = response.body.map(blog => blog.likes)
-    console.log(likes)
+    // console.log(likes)
     expect(likes[(helper.initialBlogs.length)]).toBe(0)   
   })
 
   test('fail to create blog without title and url', async () => {
+    await User.deleteMany({})
+
+    const passwordHash = await bcrypt.hash('sekret', 10)
+    const user = new User({username: 'root', passwordHash})
+
+    await user.save()
+    const token = user.getToken()
+
     const newBlog = {
       author: 'test without content'
     }
   
     await api
       .post('/api/blogs')
+      .set('Authorization', 'bearer ' + token)
       .send(newBlog)
       .expect(400)
   
@@ -129,20 +183,40 @@ describe('addition of a new blog', () => {
 
 describe('deletion of a blog', () => {
   test('succeeds with status code 204 if id is valid', async () => {
-    const blogsAtStart = await helper.blogsInDb()
-    const blogToDelete = blogsAtStart[0]
+    await User.deleteMany({})
 
+    const passwordHash = await bcrypt.hash('sekret', 10)
+    const user = new User({username: 'root', passwordHash})
+
+    await user.save()
+    const token = user.getToken()
+    
+    const newBlog = {
+      title: 'Canonical string reduction',
+      author: 'Edsger W. Dijkstra',
+      url: 'http://www.cs.utexas.edu/~EWD/transcriptions/EWD08xx/EWD808.html',
+      likes: 12,
+    }
+    await Blog.deleteMany({})
     await api
-      .delete(`/api/blogs/${blogToDelete.id}`)
+      .post('/api/blogs')
+      .set('Authorization', 'bearer ' + token)
+      .send(newBlog)
+    
+    const response = await api.get('/api/blogs')
+    console.log(response.body)    
+    await api
+      .delete(`/api/blogs/${response.body[0].id}`)
+      .set('Authorization', 'bearer ' + token)
       .expect(204)
 
     const blogsAtEnd = await helper.blogsInDb()
 
-    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length - 1)
+    expect(blogsAtEnd).toHaveLength(0)
 
-    const titles = blogsAtEnd.map(blog => blog.title)
+    // const titles = blogsAtEnd.map(blog => blog.title)
 
-    expect(titles).not.toContain(blogToDelete.title)
+    // expect(titles).not.toContain(blogToDelete.title)
   })
 })
 

@@ -28,7 +28,6 @@ blogsRouter.post('/', async (request, response) => {
 
   const body = request.body
   // const token = getTokenFrom(request)
-  console.log(request.token)
   if(!request.token || !request.user.id) {
     return response.status(401).json({error: 'token missing or invalid'})
   }
@@ -41,6 +40,9 @@ blogsRouter.post('/', async (request, response) => {
     author: body.url,
     user: user._id
   })
+  if (!blog.title || !blog.url) {
+    return response.status(400).end()
+  }
 
   const savedBlog = await blog.save()
   user.blogs = user.blogs.concat(savedBlog._id)
